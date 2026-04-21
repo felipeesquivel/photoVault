@@ -1,0 +1,2642 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Galería Local · PhotoVault</title>
+<style>
+/* ============================================================
+   PHOTOVAULT — Galería local de fotos y videos
+   Inspirado en Google Photos, diseño editorial oscuro refinado
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400&display=swap');
+
+:root {
+  --bg: #0f0f11;
+  --surface: #17171b;
+  --surface2: #1e1e24;
+  --surface3: #26262e;
+  --border: #2e2e38;
+  --accent: #d4a853;
+  --accent2: #e8c77a;
+  --text: #f0ede8;
+  --text-muted: #888795;
+  --text-dim: #555462;
+  --danger: #e05c5c;
+  --success: #5cbf7a;
+  --radius: 10px;
+  --shadow: 0 8px 32px rgba(0,0,0,0.5);
+  --transition: 0.2s cubic-bezier(0.4,0,0.2,1);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { font-size: 16px; scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 400;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--surface); }
+::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent2); }
+
+/* ── TOPBAR ── */
+#topbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 28px;
+  height: 60px;
+  background: rgba(15,15,17,0.92);
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.brand {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.brand-name {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.01em;
+}
+
+.brand-sub {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 500;
+}
+
+.spacer { flex: 1; }
+
+.topbar-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ── BUTTONS ── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 16px;
+  border: none;
+  border-radius: 7px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition);
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+}
+
+.btn svg { width: 14px; height: 14px; flex-shrink: 0; }
+
+.btn-primary {
+  background: var(--accent);
+  color: #0f0f11;
+}
+.btn-primary:hover { background: var(--accent2); transform: translateY(-1px); }
+
+.btn-ghost {
+  background: var(--surface2);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+.btn-ghost:hover { background: var(--surface3); border-color: var(--text-dim); }
+
+.btn-danger {
+  background: transparent;
+  color: var(--danger);
+  border: 1px solid var(--danger);
+}
+.btn-danger:hover { background: var(--danger); color: white; }
+
+.btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none !important; }
+
+/* ── SORT SELECT ── */
+.sort-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.sort-wrap select {
+  background: var(--surface2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 0.78rem;
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer;
+  outline: none;
+  transition: var(--transition);
+}
+.sort-wrap select:hover { border-color: var(--text-dim); }
+.sort-wrap select:focus { border-color: var(--accent); }
+
+/* ── HIDDEN FILE INPUT (fallback) ── */
+#fileInputFallback { display: none; }
+
+/* ── MAIN LAYOUT ── */
+#app {
+  display: flex;
+  height: calc(100vh - 60px);
+  overflow: hidden;
+}
+
+/* ── SIDEBAR (details panel) ── */
+#sidebar {
+  width: 300px;
+  flex-shrink: 0;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  transform: translateX(0);
+  transition: width var(--transition), transform var(--transition);
+  order: 2;
+}
+
+#sidebar.hidden {
+  width: 0;
+  overflow: hidden;
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+  z-index: 5;
+}
+
+.sidebar-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.btn-close-sidebar {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  padding: 4px;
+  border-radius: 4px;
+  transition: var(--transition);
+  line-height: 0;
+}
+.btn-close-sidebar:hover { color: var(--text); background: var(--surface2); }
+
+.sidebar-preview {
+  width: 100%;
+  aspect-ratio: 1;
+  background: var(--surface2);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-bottom: 1px solid var(--border);
+}
+
+.sidebar-preview img,
+.sidebar-preview video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.sidebar-preview .no-preview {
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  text-align: center;
+  padding: 20px;
+}
+
+.sidebar-meta {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.meta-row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.meta-label {
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+}
+
+.meta-value {
+  font-size: 0.82rem;
+  color: var(--text);
+  word-break: break-all;
+  font-family: 'DM Mono', monospace;
+}
+
+.meta-value.large-name {
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 500;
+  font-size: 0.88rem;
+  word-break: break-word;
+  font-family: unset;
+  font-family: 'DM Sans', sans-serif;
+}
+
+/* Ruta de localización en disco */
+.meta-value.path-value {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.75rem;
+  color: var(--accent);
+  word-break: break-all;
+  background: rgba(212,168,83,0.07);
+  padding: 4px 7px;
+  border-radius: 5px;
+  border-left: 2px solid var(--accent);
+  line-height: 1.5;
+}
+
+/* Fila de ruta con botón de copiar */
+.path-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.path-row .meta-value.path-value {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Botón icono de carpeta — copia la ruta */
+.btn-copy-path {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  margin-top: 1px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition);
+  position: relative;
+}
+.btn-copy-path:hover {
+  background: var(--accent);
+  color: #0f0f11;
+  border-color: var(--accent);
+}
+.btn-copy-path:hover .copy-tooltip { opacity: 1; pointer-events: none; }
+
+/* Tooltip de la ruta completa */
+.copy-tooltip {
+  position: absolute;
+  right: calc(100% + 8px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--surface3);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 0.68rem;
+  font-family: 'DM Mono', monospace;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-width: 200px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  z-index: 20;
+  pointer-events: none;
+  line-height: 1.5;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+}
+
+/* Confirmación visual al copiar */
+.btn-copy-path.copied {
+  background: var(--success) !important;
+  color: white !important;
+  border-color: var(--success) !important;
+}
+.btn-copy-path.copied .copy-tooltip { opacity: 0 !important; }
+
+/* Hash largo */
+.meta-value.mono-hash {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  word-break: break-all;
+}
+
+.sidebar-open-btn {
+  margin: 0 20px 20px;
+}
+
+/* ── CONTENT AREA ── */
+#content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 28px;
+  order: 1;
+}
+
+/* ── EMPTY STATE ── */
+#emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 20px;
+  text-align: center;
+  padding: 40px;
+}
+
+.empty-icon {
+  width: 80px;
+  height: 80px;
+  color: var(--border);
+  opacity: 0.7;
+}
+
+.empty-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.5rem;
+  color: var(--text);
+}
+
+.empty-subtitle {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  max-width: 360px;
+  line-height: 1.6;
+}
+
+/* ── STATS BAR ── */
+#statsBar {
+  display: none;
+  align-items: center;
+  gap: 24px;
+  margin-bottom: 20px;
+  padding: 12px 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+#statsBar.visible { display: flex; }
+
+.stat-item { display: flex; align-items: center; gap: 6px; }
+.stat-badge {
+  background: var(--surface2);
+  color: var(--text);
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+/* ── PROGRESS BAR ── */
+#progressWrap {
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 20px;
+  padding: 14px 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+#progressWrap.visible { display: flex; }
+
+#progressLabel { font-size: 0.78rem; color: var(--text-muted); }
+
+#progressBar {
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+#progressFill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+  width: 0%;
+}
+
+/* ── GRID ── */
+#grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.thumb-card {
+  position: relative;
+  aspect-ratio: 1;
+  background: var(--surface2);
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: border-color var(--transition), transform var(--transition), box-shadow var(--transition);
+  animation: fadeIn 0.3s ease both;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.94); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.thumb-card:hover { transform: scale(1.03); box-shadow: 0 6px 20px rgba(0,0,0,0.4); }
+.thumb-card.selected { border-color: var(--accent); }
+
+.thumb-card img, .thumb-card canvas {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.thumb-card .thumb-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface3);
+  color: var(--text-dim);
+}
+
+.thumb-type-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: rgba(0,0,0,0.7);
+  color: white;
+  font-size: 0.6rem;
+  font-weight: 500;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  backdrop-filter: blur(4px);
+}
+
+.thumb-type-badge.video { background: rgba(212,168,83,0.85); color: #0f0f11; }
+
+.thumb-name {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 100%);
+  color: white;
+  font-size: 0.65rem;
+  padding: 16px 6px 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0;
+  transition: opacity var(--transition);
+}
+.thumb-card:hover .thumb-name { opacity: 1; }
+
+/* ── DUPLICATES SECTION ── */
+#dupSection {
+  display: none;
+  margin-top: 32px;
+}
+#dupSection.visible { display: block; }
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.section-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.1rem;
+  color: var(--text);
+}
+
+.section-badge {
+  background: var(--danger);
+  color: white;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+
+.dup-group {
+  margin-bottom: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.dup-group-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+  font-size: 0.78rem;
+}
+
+.dup-hash {
+  font-family: 'DM Mono', monospace;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dup-count {
+  background: var(--danger);
+  color: white;
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 20px;
+  flex-shrink: 0;
+}
+
+.dup-files {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 1px;
+  background: var(--border);
+}
+
+.dup-file {
+  background: var(--surface);
+  padding: 10px;
+  cursor: pointer;
+  transition: background var(--transition);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+}
+.dup-file:hover { background: var(--surface2); }
+
+.dup-file-thumb {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 6px;
+  background: var(--surface2);
+}
+
+.dup-file-name {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  text-align: center;
+  word-break: break-all;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+/* Ruta de subcarpeta mostrada bajo el nombre en grupos de duplicados */
+.dup-file-path {
+  font-size: 0.6rem;
+  color: var(--accent);
+  text-align: center;
+  font-family: 'DM Mono', monospace;
+  word-break: break-all;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  opacity: 0.85;
+}
+
+/* ── LIGHTBOX (visor completo) ── */
+#lightbox {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0,0,0,0.95);
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  animation: fadeInLb 0.2s ease;
+}
+
+@keyframes fadeInLb {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+#lightbox.open { display: flex; }
+
+#lightbox .lb-media {
+  max-width: 90vw;
+  max-height: 80vh;
+  object-fit: contain;
+  border-radius: 6px;
+  box-shadow: 0 20px 80px rgba(0,0,0,0.8);
+}
+
+.lb-controls {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 20px;
+  background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 100%);
+}
+
+.lb-btn {
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.15);
+  color: white;
+  border-radius: 50%;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: var(--transition);
+  font-size: 1.1rem;
+  line-height: 1;
+}
+.lb-btn:hover { background: rgba(255,255,255,0.2); transform: scale(1.1); }
+
+.lb-counter {
+  font-size: 0.82rem;
+  color: rgba(255,255,255,0.6);
+  min-width: 80px;
+  text-align: center;
+  font-family: 'DM Mono', monospace;
+}
+
+.lb-close {
+  position: fixed;
+  top: 16px;
+  right: 20px;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.15);
+  color: white;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1.2rem;
+  transition: var(--transition);
+}
+.lb-close:hover { background: rgba(255,255,255,0.25); }
+
+.lb-filename {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.8rem;
+  color: rgba(255,255,255,0.5);
+  max-width: 60vw;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── TOAST ── */
+#toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(16px);
+  background: var(--surface3);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: 0.82rem;
+  z-index: 2000;
+  opacity: 0;
+  transition: opacity 0.3s, transform 0.3s;
+  pointer-events: none;
+}
+#toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 768px) {
+  #topbar { padding: 0 16px; gap: 10px; }
+  .brand-sub { display: none; }
+  .sort-wrap span { display: none; }
+  
+  #sidebar {
+    position: fixed;
+    right: 0;
+    top: 60px;
+    bottom: 0;
+    z-index: 50;
+    transform: translateX(0);
+    box-shadow: -8px 0 32px rgba(0,0,0,0.5);
+  }
+  #sidebar.hidden { transform: translateX(100%); width: 300px; }
+  
+  #content { padding: 16px; }
+  
+  #grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 6px; }
+}
+
+@media (max-width: 480px) {
+  #grid { grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 4px; }
+  .btn span { display: none; }
+}
+
+/* ── HASH PROGRESS ── */
+#hashProgressWrap {
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 20px;
+  padding: 14px 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+#hashProgressWrap.visible { display: flex; }
+#hashProgressLabel { font-size: 0.78rem; color: var(--text-muted); }
+#hashProgressBar { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+#hashProgressFill { height: 100%; background: var(--danger); border-radius: 2px; transition: width 0.3s ease; width: 0%; }
+
+/* ── PAUSE / RESUME BUTTON inside progress bars ── */
+.progress-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.progress-row .progress-label-wrap { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+.btn-pause {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface3);
+  color: var(--text);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition);
+  font-size: 0.75rem;
+  line-height: 1;
+}
+.btn-pause:hover { background: var(--accent); color: #0f0f11; border-color: var(--accent); }
+.btn-pause.paused { background: var(--accent); color: #0f0f11; border-color: var(--accent); }
+.paused-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  display: none;
+}
+.paused-label.visible { display: inline; }
+
+/* ── RESTORE BANNER ── */
+#restoreBanner {
+  display: none;
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  z-index: 500;
+  background: var(--surface2);
+  border: 1px solid var(--accent);
+  border-radius: 12px;
+  padding: 14px 20px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+  display: none;
+  align-items: center;
+  gap: 14px;
+  max-width: 480px;
+  width: calc(100vw - 40px);
+  animation: slideUpBanner 0.35s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+#restoreBanner.visible { display: flex; }
+
+@keyframes slideUpBanner {
+  from { opacity: 0; transform: translateX(-50%) translateY(32px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.restore-icon {
+  font-size: 1.4rem;
+  flex-shrink: 0;
+}
+
+.restore-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.restore-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+
+.restore-folder {
+  font-size: 0.72rem;
+  color: var(--accent);
+  font-family: 'DM Mono', monospace;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.restore-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.btn-restore {
+  background: var(--accent);
+  color: #0f0f11;
+  border: none;
+  border-radius: 7px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 7px 14px;
+  cursor: pointer;
+  transition: var(--transition);
+  white-space: nowrap;
+}
+.btn-restore:hover { background: var(--accent2); transform: translateY(-1px); }
+
+.btn-dismiss {
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.8rem;
+  padding: 7px 10px;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.btn-dismiss:hover { color: var(--text); border-color: var(--text-dim); }
+
+/* ── LANG BUTTON ── */
+.btn-lang {
+  padding: 6px 11px;
+  gap: 5px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.btn-lang #langFlag { font-size: 0.95rem; line-height: 1; }
+/* Subtle transition when language flips */
+[data-i18n], [data-i18n-title] { transition: opacity 0.15s ease; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════
+     BARRA SUPERIOR
+     ═══════════════════════════════════════════ -->
+<header id="topbar">
+  <div class="brand">
+    <span class="brand-name">PhotoVault</span>
+    <span class="brand-sub" data-i18n="brandSub">Galería local</span>
+  </div>
+
+  <div class="spacer"></div>
+
+  <div class="topbar-controls">
+    <!-- Selector de idioma -->
+    <button class="btn btn-ghost btn-lang" id="btnLang" title="Switch language / Cambiar idioma">
+      <span id="langFlag">🇺🇸</span>
+      <span id="langLabel">EN</span>
+    </button>
+
+    <!-- Ordenamiento -->
+    <div class="sort-wrap">
+      <span data-i18n="sortLabel">Ordenar:</span>
+      <select id="sortSelect">
+        <option value="name-asc"  data-i18n="sortNameAsc">Nombre A→Z</option>
+        <option value="name-desc" data-i18n="sortNameDesc">Nombre Z→A</option>
+        <option value="date-desc" data-i18n="sortDateDesc">Más reciente</option>
+        <option value="date-asc"  data-i18n="sortDateAsc">Más antiguo</option>
+        <option value="size-desc" data-i18n="sortSizeDesc">Mayor tamaño</option>
+        <option value="type"      data-i18n="sortType">Tipo</option>
+      </select>
+    </div>
+
+    <!-- Buscar duplicados -->
+    <button class="btn btn-ghost" id="btnDuplicates" disabled>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2M10 8h8a2 2 0 012 2v8a2 2 0 01-2 2h-8a2 2 0 01-2-2v-8a2 2 0 012-2z"/>
+      </svg>
+      <span data-i18n="btnDuplicates">Duplicados</span>
+    </button>
+
+    <!-- Seleccionar carpeta -->
+    <button class="btn btn-primary" id="btnSelect">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/>
+      </svg>
+      <span data-i18n="btnSelect">Seleccionar carpeta</span>
+    </button>
+  </div>
+
+  <!-- Input fallback para navegadores sin showDirectoryPicker -->
+  <input type="file" id="fileInputFallback" multiple accept="image/*,video/*" webkitdirectory>
+</header>
+
+<!-- ═══════════════════════════════════════════
+     APLICACIÓN PRINCIPAL
+     ═══════════════════════════════════════════ -->
+<div id="app">
+
+  <!-- Contenido principal -->
+  <main id="content">
+
+    <!-- Estado vacío inicial -->
+    <div id="emptyState">
+      <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+        <path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/>
+        <circle cx="12" cy="13" r="3"/>
+        <path d="M16 8l.01 0"/>
+      </svg>
+      <h2 class="empty-title" data-i18n="emptyTitle">Tu galería, sin nube</h2>
+      <p class="empty-subtitle" data-i18n="emptySubtitle">
+        Selecciona una carpeta de tu disco para ver tus fotos y videos directamente en el navegador.
+        Nada se sube a ningún servidor.
+      </p>
+      <button class="btn btn-primary" onclick="document.getElementById('btnSelect').click()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px">
+          <path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/>
+        </svg>
+        <span data-i18n="btnOpenFolder">Abrir carpeta</span>
+      </button>
+    </div>
+
+    <!-- Barra de estadísticas -->
+    <div id="statsBar">
+      <div class="stat-item">
+        📁 <span data-i18n="statFiles">Archivos:</span> <span class="stat-badge" id="statTotal">0</span>
+      </div>
+      <div class="stat-item">
+        🖼 <span data-i18n="statImages">Imágenes:</span> <span class="stat-badge" id="statImages">0</span>
+      </div>
+      <div class="stat-item">
+        🎬 <span data-i18n="statVideos">Videos:</span> <span class="stat-badge" id="statVideos">0</span>
+      </div>
+      <div class="stat-item">
+        💾 <span data-i18n="statTotal2">Total:</span> <span class="stat-badge" id="statSize">0 MB</span>
+      </div>
+    </div>
+
+    <!-- Barra de progreso carga -->
+    <div id="progressWrap">
+      <div class="progress-row">
+        <div class="progress-label-wrap">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span id="progressLabel" data-i18n="progressLoading">Cargando archivos…</span>
+            <span class="paused-label" id="progressPausedLabel" data-i18n="pausedLabel">Pausado</span>
+          </div>
+          <div id="progressBar"><div id="progressFill"></div></div>
+        </div>
+        <button class="btn-pause" id="btnPauseLoad" title="Pausar / Reanudar">
+          <svg id="iconPauseLoad" viewBox="0 0 24 24" fill="currentColor" width="12" height="12">
+            <rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Barra de progreso hash -->
+    <div id="hashProgressWrap">
+      <div class="progress-row">
+        <div class="progress-label-wrap">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span id="hashProgressLabel" data-i18n="progressHashing">Calculando hashes…</span>
+            <span class="paused-label" id="hashPausedLabel" data-i18n="pausedLabel">Pausado</span>
+          </div>
+          <div id="hashProgressBar"><div id="hashProgressFill"></div></div>
+        </div>
+        <button class="btn-pause" id="btnPauseHash" title="Pausar / Reanudar">
+          <svg id="iconPauseHash" viewBox="0 0 24 24" fill="currentColor" width="12" height="12">
+            <rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Cuadrícula principal -->
+    <div id="grid"></div>
+
+    <!-- Sección de duplicados -->
+    <div id="dupSection">
+      <div class="section-header">
+        <h3 class="section-title" data-i18n="dupTitle">Archivos duplicados</h3>
+        <span class="section-badge" id="dupBadge">0 grupos</span>
+        <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+          <button class="btn btn-ghost" style="font-size:0.75rem;padding:5px 12px" id="btnExportJSON" data-i18n-title="exportJsonTitle" title="Exportar lista como JSON">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px">
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>
+              <line x1="12" y1="11" x2="12" y2="17"/><polyline points="9 14 12 17 15 14"/>
+            </svg>
+            JSON
+          </button>
+          <button class="btn btn-ghost" style="font-size:0.75rem;padding:5px 12px" id="btnExportCSV" data-i18n-title="exportCsvTitle" title="Exportar lista como CSV">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px">
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>
+              <line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/>
+            </svg>
+            CSV
+          </button>
+          <button class="btn btn-ghost" style="font-size:0.75rem;padding:5px 12px" id="btnExportTXT" data-i18n-title="exportTxtTitle" title="Exportar lista como texto plano">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px">
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>
+              <line x1="8" y1="13" x2="16" y2="13"/>
+            </svg>
+            TXT
+          </button>
+          <button class="btn btn-ghost" style="font-size:0.75rem;padding:5px 12px" id="btnCloseDup" data-i18n="btnClose">Cerrar</button>
+        </div>
+      </div>
+      <div id="dupList"></div>
+    </div>
+
+  </main>
+
+  <!-- Panel lateral de detalles -->
+  <aside id="sidebar" class="hidden">
+    <div class="sidebar-header">
+      <span class="sidebar-title" data-i18n="sidebarTitle">Detalles</span>
+      <button class="btn-close-sidebar" id="btnCloseSidebar" data-i18n-title="closePanelTitle" title="Cerrar panel">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="sidebar-preview" id="sidebarPreview">
+      <div class="no-preview" data-i18n="noPreview">Selecciona un archivo</div>
+    </div>
+
+    <div class="sidebar-meta" id="sidebarMeta"></div>
+
+    <div class="sidebar-open-btn">
+      <button class="btn btn-ghost" style="width:100%" id="btnOpenViewer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px">
+          <rect x="3" y="3" width="18" height="18" rx="2"/>
+          <path d="M3 9h18M9 21V9"/>
+        </svg>
+        <span data-i18n="btnFullscreen">Ver en pantalla completa</span>
+      </button>
+    </div>
+  </aside>
+
+</div>
+
+<!-- ═══════════════════════════════════════════
+     LIGHTBOX (visor de pantalla completa)
+     ═══════════════════════════════════════════ -->
+<div id="lightbox">
+  <span class="lb-filename" id="lbFilename"></span>
+  <button class="lb-close" id="lbClose">✕</button>
+
+  <!-- La imagen/video se inserta aquí dinámicamente -->
+  <div id="lbMediaWrap"></div>
+
+  <div class="lb-controls">
+    <button class="lb-btn" id="lbPrev">&#8592;</button>
+    <span class="lb-counter" id="lbCounter">1 / 1</span>
+    <button class="lb-btn" id="lbNext">&#8594;</button>
+  </div>
+</div>
+
+<!-- Toast de notificaciones -->
+<div id="toast"></div>
+
+<!-- ═══════════════════════════════════════════
+     BANNER DE RESTAURACIÓN DE SESIÓN
+     Solo aparece en Chrome/Edge con File System Access API
+     cuando se detecta una carpeta guardada en IndexedDB.
+     ═══════════════════════════════════════════ -->
+<div id="restoreBanner">
+  <span class="restore-icon">📂</span>
+  <div class="restore-text">
+    <div class="restore-title" data-i18n="restoreTitle">Carpeta reciente encontrada</div>
+    <div class="restore-folder" id="restoreFolderName">…</div>
+  </div>
+  <div class="restore-actions">
+    <button class="btn-restore" id="btnRestore" data-i18n="btnRestore">Restaurar</button>
+    <button class="btn-dismiss" id="btnDismissRestore" data-i18n-title="dismissTitle" title="Descartar">✕</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     JAVASCRIPT
+     ═══════════════════════════════════════════ -->
+<script>
+/* ============================================================
+   PhotoVault — Lógica principal
+   Archivo único HTML + CSS + JS
+   ============================================================
+
+   INSTRUCCIONES DE USO:
+   1. Abre este archivo en Chrome, Edge u otro navegador moderno.
+   2. Haz clic en "Seleccionar carpeta" y elige una carpeta local.
+   3. Usa "Duplicados" para detectar archivos idénticos por hash SHA-256.
+   4. Haz clic en cualquier miniatura para ver detalles y abrir el visor.
+   ============================================================ */
+
+// ─── Estado global ───────────────────────────────────────────
+const state = {
+  files: [],          // Array de objetos { file, url, type, thumb, path, depth }
+  selected: null,     // Índice del archivo seleccionado
+  lbIndex: 0,         // Índice del lightbox
+  hashes: new Map(),  // Map<hash, [índices]>
+  rootName: '',       // Nombre de la carpeta raíz seleccionada
+  lastDupGroups: [],  // Guarda últimos grupos de duplicados para exportar
+};
+
+// ─── Referencia DOM rápida (necesaria antes del bloque i18n) ─
+const $ = id => document.getElementById(id);
+
+/* ============================================================
+   CONTROLADOR DE PAUSA — PauseController
+   ============================================================
+   Permite pausar y reanudar cualquier loop async.
+   Uso:
+     const pc = new PauseController();
+     // dentro del loop:
+     await pc.checkPause();   // se bloquea si está pausado
+     if (pc.cancelled) break; // sale si fue cancelado
+   ============================================================ */
+class PauseController {
+  constructor() {
+    this.paused    = false;
+    this.cancelled = false;
+    this._resolve  = null; // resuelve la Promise de pausa
+  }
+
+  /** Llama esto en cada iteración del loop. Si está pausado, espera. */
+  checkPause() {
+    if (this.cancelled) return Promise.resolve();
+    if (!this.paused)   return Promise.resolve();
+    // Devuelve una Promise que solo se resuelve cuando se llame a resume()
+    return new Promise(res => { this._resolve = res; });
+  }
+
+  pause() {
+    this.paused = true;
+  }
+
+  resume() {
+    this.paused = false;
+    if (this._resolve) { this._resolve(); this._resolve = null; }
+  }
+
+  cancel() {
+    this.cancelled = true;
+    this.resume(); // desbloquea el loop para que pueda salir
+  }
+}
+
+// Instancias activas (se recrean en cada proceso)
+let loadPauseCtrl = new PauseController();
+let hashPauseCtrl = new PauseController();
+
+/** Actualiza el ícono y clase del botón de pausa según el estado */
+function syncPauseBtn(btnId, iconId, pausedLabelId, isPaused) {
+  const btn   = $(btnId);
+  const icon  = $(iconId);
+  const label = $(pausedLabelId);
+  if (!btn || !icon) return;
+
+  if (isPaused) {
+    btn.classList.add('paused');
+    btn.title = t('btnResumeTitle');
+    // Ícono de PLAY
+    icon.innerHTML = '<polygon points="5,3 19,12 5,21"/>';
+    if (label) label.classList.add('visible');
+  } else {
+    btn.classList.remove('paused');
+    btn.title = t('btnPauseTitle');
+    // Ícono de PAUSA
+    icon.innerHTML = '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>';
+    if (label) label.classList.remove('visible');
+  }
+}
+
+/* ============================================================
+   INTERNACIONALIZACIÓN (i18n)
+   Sistema ligero de traducción sin librerías externas.
+   - Usa atributos data-i18n en el HTML para marcar nodos de texto.
+   - Usa data-i18n-title para atributos title.
+   - El idioma se guarda en localStorage para persistir entre sesiones.
+   Idiomas disponibles: 'es' (español), 'en' (English)
+   ============================================================ */
+
+const TRANSLATIONS = {
+  es: {
+    // Marca/topbar
+    brandSub:       'Galería local',
+    sortLabel:      'Ordenar:',
+    sortNameAsc:    'Nombre A→Z',
+    sortNameDesc:   'Nombre Z→A',
+    sortDateDesc:   'Más reciente',
+    sortDateAsc:    'Más antiguo',
+    sortSizeDesc:   'Mayor tamaño',
+    sortType:       'Tipo',
+    btnDuplicates:  'Duplicados',
+    btnSelect:      'Seleccionar carpeta',
+    // Empty state
+    emptyTitle:     'Tu galería, sin nube',
+    emptySubtitle:  'Selecciona una carpeta de tu disco para ver tus fotos y videos directamente en el navegador. Nada se sube a ningún servidor.',
+    btnOpenFolder:  'Abrir carpeta',
+    // Stats
+    statFiles:      'Archivos:',
+    statImages:     'Imágenes:',
+    statVideos:     'Videos:',
+    statTotal2:     'Total:',
+    // Progress
+    progressLoading:'Cargando archivos…',
+    progressHashing:'Calculando hashes…',
+    pausedLabel:    'Pausado',
+    btnPauseTitle:  'Pausar',
+    btnResumeTitle: 'Reanudar',
+    cancelledLoad:  '⏹ Carga cancelada — {0} archivos procesados',
+    cancelledHash:  '⏹ Análisis cancelado — {0} / {1} archivos procesados',
+    copyPathLabel:  'Copiar ruta al portapapeles',
+    pathCopied:     '📋 Ruta copiada al portapapeles',
+    // Duplicates section
+    dupTitle:       'Archivos duplicados',
+    exportJsonTitle:'Exportar lista como JSON',
+    exportCsvTitle: 'Exportar lista como CSV',
+    exportTxtTitle: 'Exportar lista como texto plano',
+    btnClose:       'Cerrar',
+    // Sidebar
+    sidebarTitle:   'Detalles',
+    closePanelTitle:'Cerrar panel',
+    noPreview:      'Selecciona un archivo',
+    btnFullscreen:  'Ver en pantalla completa',
+    // Restore banner
+    restoreTitle:   'Carpeta reciente encontrada',
+    btnRestore:     'Restaurar',
+    dismissTitle:   'Descartar',
+    // Meta labels (used in JS)
+    metaName:       'Nombre',
+    metaFolder:     'Carpeta',
+    metaPath:       'Ruta relativa',
+    metaMime:       'Tipo MIME',
+    metaFormat:     'Formato',
+    metaCategory:   'Categoría',
+    metaSize:       'Tamaño',
+    metaModified:   'Modificado',
+    metaHash:       'Hash SHA-256',
+    catImage:       '🖼 Imagen',
+    catVideo:       '🎬 Video',
+    // Dynamic strings (use {n} placeholders)
+    processingN:    'Procesando {0} archivos…',
+    processingOf:   'Procesando {0} / {1}…',
+    analyzingOf:    'Analizando {0} / {1}: {2}',
+    loadedN:        '✓ {0} archivos cargados',
+    noDuplicates:   '✓ No se encontraron duplicados exactos.',
+    dupFound:       '⚠ {0} grupos de duplicados ({1} archivos)',
+    dupGroupN:      '{0} grupo',
+    dupGroupsN:     '{0} grupos',
+    copiasN:        '{0} copias',
+    exportedAs:     '✓ Exportado como {0}',
+    noDupExport:    'No hay duplicados para exportar.',
+    permDenied:     '⚠ Permiso denegado. Selecciona la carpeta manualmente.',
+    restoreFailed:  'No se pudo restaurar la carpeta anterior.',
+    // Export report headers
+    reportTitle:    'PhotoVault — Reporte de archivos duplicados',
+    reportGenerated:'Generado:',
+    reportRoot:     'Carpeta raíz:',
+    reportGroups:   'Total de grupos:',
+    reportGroup:    'GRUPO',
+    reportCopies:   'copias',
+    reportEach:     'c/u',
+    reportModified: 'Modificado:',
+    // Page title
+    pageTitle:      'Galería Local · PhotoVault',
+  },
+
+  en: {
+    brandSub:       'Local gallery',
+    sortLabel:      'Sort:',
+    sortNameAsc:    'Name A→Z',
+    sortNameDesc:   'Name Z→A',
+    sortDateDesc:   'Most recent',
+    sortDateAsc:    'Oldest first',
+    sortSizeDesc:   'Largest first',
+    sortType:       'Type',
+    btnDuplicates:  'Duplicates',
+    btnSelect:      'Select folder',
+    emptyTitle:     'Your gallery, no cloud',
+    emptySubtitle:  'Select a folder from your disk to view your photos and videos directly in the browser. Nothing is uploaded to any server.',
+    btnOpenFolder:  'Open folder',
+    statFiles:      'Files:',
+    statImages:     'Images:',
+    statVideos:     'Videos:',
+    statTotal2:     'Total:',
+    progressLoading:'Loading files…',
+    progressHashing:'Computing hashes…',
+    pausedLabel:    'Paused',
+    btnPauseTitle:  'Pause',
+    btnResumeTitle: 'Resume',
+    cancelledLoad:  '⏹ Load cancelled — {0} files processed',
+    cancelledHash:  '⏹ Analysis cancelled — {0} / {1} files processed',
+    copyPathLabel:  'Copy path to clipboard',
+    pathCopied:     '📋 Path copied to clipboard',
+    dupTitle:       'Duplicate files',
+    exportJsonTitle:'Export list as JSON',
+    exportCsvTitle: 'Export list as CSV',
+    exportTxtTitle: 'Export list as plain text',
+    btnClose:       'Close',
+    sidebarTitle:   'Details',
+    closePanelTitle:'Close panel',
+    noPreview:      'Select a file',
+    btnFullscreen:  'View fullscreen',
+    restoreTitle:   'Recent folder found',
+    btnRestore:     'Restore',
+    dismissTitle:   'Dismiss',
+    metaName:       'Name',
+    metaFolder:     'Folder',
+    metaPath:       'Relative path',
+    metaMime:       'MIME type',
+    metaFormat:     'Format',
+    metaCategory:   'Category',
+    metaSize:       'Size',
+    metaModified:   'Modified',
+    metaHash:       'SHA-256 hash',
+    catImage:       '🖼 Image',
+    catVideo:       '🎬 Video',
+    processingN:    'Processing {0} files…',
+    processingOf:   'Processing {0} / {1}…',
+    analyzingOf:    'Analyzing {0} / {1}: {2}',
+    loadedN:        '✓ {0} files loaded',
+    noDuplicates:   '✓ No exact duplicates found.',
+    dupFound:       '⚠ {0} duplicate groups ({1} files)',
+    dupGroupN:      '{0} group',
+    dupGroupsN:     '{0} groups',
+    copiasN:        '{0} copies',
+    exportedAs:     '✓ Exported as {0}',
+    noDupExport:    'No duplicates to export.',
+    permDenied:     '⚠ Permission denied. Please select the folder manually.',
+    restoreFailed:  'Could not restore the previous folder.',
+    reportTitle:    'PhotoVault — Duplicate files report',
+    reportGenerated:'Generated:',
+    reportRoot:     'Root folder:',
+    reportGroups:   'Total groups:',
+    reportGroup:    'GROUP',
+    reportCopies:   'copies',
+    reportEach:     'each',
+    reportModified: 'Modified:',
+    pageTitle:      'Local Gallery · PhotoVault',
+  }
+};
+
+/** Current language — read from localStorage or default to 'es' */
+let currentLang = localStorage.getItem('pv_lang') || 'es';
+
+/** Returns a translated string, replacing {0},{1},{2} placeholders */
+function t(key, ...args) {
+  let str = TRANSLATIONS[currentLang]?.[key] ?? TRANSLATIONS['es'][key] ?? key;
+  args.forEach((arg, i) => { str = str.replace(`{${i}}`, arg); });
+  return str;
+}
+
+/**
+ * Applies translations to all [data-i18n] and [data-i18n-title] elements.
+ * Also updates the document title and the <html lang> attribute.
+ * Called once at init and again whenever the language changes.
+ */
+function applyTranslations() {
+  // Flash opacity to signal the change
+  document.querySelectorAll('[data-i18n], [data-i18n-title]').forEach(el => {
+    el.style.opacity = '0';
+  });
+
+  requestAnimationFrame(() => {
+    // Text content nodes
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      const key = el.dataset.i18n;
+      el.textContent = t(key);
+      el.style.opacity = '';
+    });
+
+    // Title attributes (tooltips)
+    document.querySelectorAll('[data-i18n-title]').forEach(el => {
+      const key = el.dataset.i18nTitle;
+      el.title = t(key);
+      el.style.opacity = '';
+    });
+
+    // Page title
+    document.title = t('pageTitle');
+
+    // <html lang>
+    document.documentElement.lang = currentLang;
+
+    // Language toggle button appearance
+    $('langFlag').textContent = currentLang === 'es' ? '🇺🇸' : '🇲🇽';
+    $('langLabel').textContent = currentLang === 'es' ? 'EN' : 'ES';
+
+    // Sync pause button titles to new language
+    syncPauseBtn('btnPauseLoad', 'iconPauseLoad', 'progressPausedLabel', loadPauseCtrl.paused);
+    syncPauseBtn('btnPauseHash', 'iconPauseHash', 'hashPausedLabel',      hashPauseCtrl.paused);
+  });
+}
+
+/** Toggle between 'es' and 'en', persist to localStorage */
+function switchLanguage() {
+  currentLang = currentLang === 'es' ? 'en' : 'es';
+  localStorage.setItem('pv_lang', currentLang);
+  applyTranslations();
+
+  // If sidebar is open, re-render it so meta labels also update
+  if (state.selected !== null) openSidebar(state.files[state.selected]);
+
+  // Re-render dup badge text if visible
+  if (state.lastDupGroups.length) {
+    const n = state.lastDupGroups.length;
+    dupBadge.textContent = n === 1 ? t('dupGroupN', n) : t('dupGroupsN', n);
+  }
+}
+
+$('btnLang').addEventListener('click', switchLanguage);
+
+// ─── Tipos soportados ────────────────────────────────────────
+const IMAGE_TYPES = new Set(['image/jpeg','image/png','image/gif','image/bmp','image/webp','image/svg+xml']);
+const VIDEO_TYPES = new Set(['video/mp4','video/webm','video/quicktime','video/x-msvideo']);
+
+const IMG_EXTS  = /\.(jpe?g|png|gif|bmp|webp|svg)$/i;
+const VID_EXTS  = /\.(mp4|webm|mov|avi)$/i;
+
+// ─── Referencias DOM ─────────────────────────────────────────
+const grid              = $('grid');
+const emptyState        = $('emptyState');
+const statsBar          = $('statsBar');
+const progressWrap      = $('progressWrap');
+const progressFill      = $('progressFill');
+const progressLabel     = $('progressLabel');
+const hashProgressWrap  = $('hashProgressWrap');
+const hashProgressFill  = $('hashProgressFill');
+const hashProgressLabel = $('hashProgressLabel');
+const sidebar           = $('sidebar');
+const sidebarPreview    = $('sidebarPreview');
+const sidebarMeta       = $('sidebarMeta');
+const dupSection        = $('dupSection');
+const dupList           = $('dupList');
+const dupBadge          = $('dupBadge');
+const lightbox          = $('lightbox');
+const lbMediaWrap       = $('lbMediaWrap');
+const lbFilename        = $('lbFilename');
+const lbCounter         = $('lbCounter');
+const toast             = $('toast');
+
+// ─── Botones de pausa ────────────────────────────────────────
+
+$('btnPauseLoad').addEventListener('click', () => {
+  if (loadPauseCtrl.paused) {
+    loadPauseCtrl.resume();
+    syncPauseBtn('btnPauseLoad', 'iconPauseLoad', 'progressPausedLabel', false);
+  } else {
+    loadPauseCtrl.pause();
+    syncPauseBtn('btnPauseLoad', 'iconPauseLoad', 'progressPausedLabel', true);
+  }
+});
+
+$('btnPauseHash').addEventListener('click', () => {
+  if (hashPauseCtrl.paused) {
+    hashPauseCtrl.resume();
+    syncPauseBtn('btnPauseHash', 'iconPauseHash', 'hashPausedLabel', false);
+  } else {
+    hashPauseCtrl.pause();
+    syncPauseBtn('btnPauseHash', 'iconPauseHash', 'hashPausedLabel', true);
+  }
+});
+
+// ─── Utilidades ──────────────────────────────────────────────
+
+/** Muestra un toast con mensaje temporal */
+function showToast(msg, duration = 3000) {
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), duration);
+}
+
+/** Formatea bytes en formato legible */
+function formatBytes(bytes) {
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B','KB','MB','GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+/** Formatea fecha según el idioma activo */
+function formatDate(date) {
+  if (!date || isNaN(date)) return currentLang === 'es' ? 'No disponible' : 'Not available';
+  const locale = currentLang === 'es' ? 'es-MX' : 'en-US';
+  return date.toLocaleDateString(locale, {
+    year: 'numeric', month: 'long', day: 'numeric',
+    hour: '2-digit', minute: '2-digit'
+  });
+}
+
+/** Detecta si el archivo es imagen o video */
+function getFileCategory(file) {
+  if (IMAGE_TYPES.has(file.type) || IMG_EXTS.test(file.name)) return 'image';
+  if (VIDEO_TYPES.has(file.type) || VID_EXTS.test(file.name)) return 'video';
+  return null;
+}
+
+/** Genera miniatura de imagen usando canvas (150x150) */
+function generateImageThumb(file) {
+  return new Promise(resolve => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const size = 300; // resolución doble para pantallas HiDPI
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+
+      // Recorte centrado manteniendo aspecto
+      const ratio = Math.min(size / img.width, size / img.height);
+      const w = img.width * ratio;
+      const h = img.height * ratio;
+      const x = (size - w) / 2;
+      const y = (size - h) / 2;
+
+      ctx.fillStyle = '#17171b';
+      ctx.fillRect(0, 0, size, size);
+      ctx.drawImage(img, x, y, w, h);
+
+      canvas.toBlob(blob => {
+        URL.revokeObjectURL(url);
+        resolve(blob ? URL.createObjectURL(blob) : url);
+      }, 'image/jpeg', 0.8);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
+    img.src = url;
+  });
+}
+
+/** Genera miniatura de video capturando primer frame */
+function generateVideoThumb(file) {
+  return new Promise(resolve => {
+    const url = URL.createObjectURL(file);
+    const video = document.createElement('video');
+    video.muted = true;
+    video.preload = 'metadata';
+    video.src = url;
+
+    const cleanup = () => URL.revokeObjectURL(url);
+
+    video.addEventListener('loadeddata', () => {
+      video.currentTime = 0.5; // frame a 0.5s para evitar negro inicial
+    }, { once: true });
+
+    video.addEventListener('seeked', () => {
+      const canvas = document.createElement('canvas');
+      const size = 300;
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+
+      const ratio = Math.min(size / video.videoWidth, size / video.videoHeight);
+      const w = video.videoWidth * ratio;
+      const h = video.videoHeight * ratio;
+      const x = (size - w) / 2;
+      const y = (size - h) / 2;
+
+      ctx.fillStyle = '#0f0f11';
+      ctx.fillRect(0, 0, size, size);
+      ctx.drawImage(video, x, y, w, h);
+
+      canvas.toBlob(blob => {
+        cleanup();
+        resolve(blob ? URL.createObjectURL(blob) : null);
+      }, 'image/jpeg', 0.8);
+    }, { once: true });
+
+    video.addEventListener('error', () => { cleanup(); resolve(null); });
+
+    // Timeout de seguridad
+    setTimeout(() => { cleanup(); resolve(null); }, 5000);
+  });
+}
+
+// ─── Selección de carpeta ────────────────────────────────────
+
+/**
+ * Devuelve true si la app corre dentro de un iframe.
+ * En ese contexto showDirectoryPicker lanza SecurityError aunque exista.
+ */
+function isInIframe() {
+  try { return window.self !== window.top; } catch { return true; }
+}
+
+/** true solo si podemos usar File System Access API de forma segura */
+const canUseDirectoryPicker =
+  typeof window.showDirectoryPicker === 'function' && !isInIframe();
+
+$('btnSelect').addEventListener('click', () => {
+  if (canUseDirectoryPicker) {
+    openWithDirectoryPicker();
+  } else {
+    $('fileInputFallback').click();
+  }
+});
+
+/**
+ * Recorre recursivamente un directorio con profundidad ilimitada.
+ * @param {FileSystemDirectoryHandle} dirHandle
+ * @param {Array} result  — acumula objetos { file, path }
+ * @param {string} currentPath — ruta relativa construida hasta ahora
+ */
+async function collectFilesFromDir(dirHandle, result, currentPath) {
+  for await (const [name, handle] of dirHandle.entries()) {
+    const entryPath = currentPath + '/' + name;
+    if (handle.kind === 'file') {
+      try {
+        const file = await handle.getFile();
+        if (getFileCategory(file)) result.push({ file, path: entryPath });
+      } catch (e) {
+        console.warn('No se pudo leer:', entryPath, e);
+      }
+    } else if (handle.kind === 'directory') {
+      // Recursión sin límite de profundidad
+      await collectFilesFromDir(handle, result, entryPath);
+    }
+  }
+}
+
+/** Fallback: input file — usa webkitRelativePath para rutas */
+$('fileInputFallback').addEventListener('change', e => {
+  const entries = Array.from(e.target.files)
+    .filter(f => getFileCategory(f))
+    .map(f => ({
+      file: f,
+      // webkitRelativePath da algo como "Carpeta/subcarpeta/foto.jpg"
+      path: f.webkitRelativePath || f.name
+    }));
+  if (entries.length) {
+    // Deducir nombre raíz del primer archivo
+    state.rootName = entries[0]?.path.split('/')[0] || 'Carpeta';
+    processFiles(entries);
+  }
+  e.target.value = ''; // reset
+});
+
+// ─── Procesamiento de archivos ───────────────────────────────
+
+async function processFiles(entries) {
+  // 1. Cancelar cualquier proceso anterior y limpiar UI
+  clearState();
+
+  // 2. Crear controladores NUEVOS después de clearState (no antes)
+  loadPauseCtrl = new PauseController();
+  syncPauseBtn('btnPauseLoad', 'iconPauseLoad', 'progressPausedLabel', false);
+
+  emptyState.style.display = 'none';
+  progressWrap.classList.add('visible');
+  progressFill.style.width = '0%';
+  progressLabel.textContent = t('processingN', entries.length);
+
+  const BATCH = 10;
+  const total = entries.length;
+
+  for (let i = 0; i < total; i += BATCH) {
+    // Esperar si está pausado
+    await loadPauseCtrl.checkPause();
+
+    // Salir del loop si fue cancelado
+    if (loadPauseCtrl.cancelled) break;
+
+    const batch = entries.slice(i, i + BATCH);
+    await Promise.all(batch.map(async ({ file, path }) => {
+      const cat = getFileCategory(file);
+      const url = URL.createObjectURL(file);
+
+      let thumb = null;
+      try {
+        thumb = cat === 'image'
+          ? await generateImageThumb(file)
+          : await generateVideoThumb(file);
+      } catch {}
+
+      const pathParts = path.split('/');
+      pathParts.pop();
+      const folder = pathParts.join('/') || state.rootName || '(raíz)';
+
+      const item = {
+        file, url, cat, thumb,
+        path,
+        folder,
+        idx: state.files.length
+      };
+      state.files.push(item);
+      appendThumb(item);
+    }));
+
+    const done = Math.min(i + BATCH, total);
+    progressFill.style.width = `${(done / total) * 100}%`;
+    progressLabel.textContent = t('processingOf', done, total);
+
+    await new Promise(r => setTimeout(r, 0));
+  }
+
+  // Limpiar estado de pausa
+  progressWrap.classList.remove('visible');
+  syncPauseBtn('btnPauseLoad', 'iconPauseLoad', 'progressPausedLabel', false);
+
+  const processed = state.files.length;
+
+  if (loadPauseCtrl.cancelled && processed < entries.length) {
+    showToast(t('cancelledLoad', processed));
+  } else {
+    showToast(t('loadedN', processed));
+  }
+
+  if (processed > 0) {
+    updateStats();
+    applySorting();
+    $('btnDuplicates').disabled = false;
+  } else {
+    emptyState.style.display = '';
+  }
+}
+
+/** Limpia el estado y la UI — también cancela cualquier proceso activo */
+function clearState() {
+  // Cancelar procesos EN CURSO (los controladores actuales antes de reemplazarlos)
+  loadPauseCtrl.cancel();
+  hashPauseCtrl.cancel();
+
+  // Revocar todas las URLs de objeto
+  state.files.forEach(f => {
+    if (f.url) URL.revokeObjectURL(f.url);
+    if (f.thumb && f.thumb !== f.url) URL.revokeObjectURL(f.thumb);
+  });
+  state.files = [];
+  state.hashes.clear();
+  state.selected = null;
+
+  grid.innerHTML = '';
+  dupSection.classList.remove('visible');
+  dupList.innerHTML = '';
+  hashProgressWrap.classList.remove('visible');
+  $('btnDuplicates').disabled = true;
+  closeSidebar();
+}
+
+/** Crea y agrega una miniatura al grid */
+function appendThumb(item) {
+  const card = document.createElement('div');
+  card.className = 'thumb-card';
+  card.dataset.idx = item.idx;
+  card.style.animationDelay = `${(item.idx % 20) * 30}ms`;
+
+  // Miniatura
+  if (item.thumb) {
+    const img = document.createElement('img');
+    img.src = item.thumb;
+    img.loading = 'lazy';
+    img.alt = item.file.name;
+    card.appendChild(img);
+  } else {
+    const ph = document.createElement('div');
+    ph.className = 'thumb-placeholder';
+    ph.textContent = item.cat === 'video' ? '🎬' : '🖼';
+    card.appendChild(ph);
+  }
+
+  // Badge de tipo
+  const badge = document.createElement('span');
+  badge.className = `thumb-type-badge${item.cat === 'video' ? ' video' : ''}`;
+  badge.textContent = item.file.name.split('.').pop().toUpperCase();
+  card.appendChild(badge);
+
+  // Nombre en hover
+  const nameEl = document.createElement('span');
+  nameEl.className = 'thumb-name';
+  nameEl.textContent = item.file.name;
+  card.appendChild(nameEl);
+
+  card.addEventListener('click', () => selectFile(item.idx));
+
+  grid.appendChild(card);
+  item.card = card;
+}
+
+// ─── Estadísticas ─────────────────────────────────────────────
+
+function updateStats() {
+  statsBar.classList.add('visible');
+  const images = state.files.filter(f => f.cat === 'image').length;
+  const videos = state.files.filter(f => f.cat === 'video').length;
+  const totalSize = state.files.reduce((a, b) => a + b.file.size, 0);
+
+  $('statTotal').textContent  = state.files.length;
+  $('statImages').textContent = images;
+  $('statVideos').textContent = videos;
+  $('statSize').textContent   = formatBytes(totalSize);
+}
+
+// ─── Ordenamiento ─────────────────────────────────────────────
+
+$('sortSelect').addEventListener('change', applySorting);
+
+function applySorting() {
+  const val = $('sortSelect').value;
+  const sorted = [...state.files];
+
+  switch (val) {
+    case 'name-asc':  sorted.sort((a,b) => a.file.name.localeCompare(b.file.name)); break;
+    case 'name-desc': sorted.sort((a,b) => b.file.name.localeCompare(a.file.name)); break;
+    case 'date-desc': sorted.sort((a,b) => b.file.lastModified - a.file.lastModified); break;
+    case 'date-asc':  sorted.sort((a,b) => a.file.lastModified - b.file.lastModified); break;
+    case 'size-desc': sorted.sort((a,b) => b.file.size - a.file.size); break;
+    case 'type':      sorted.sort((a,b) => a.cat.localeCompare(b.cat) || a.file.name.localeCompare(b.file.name)); break;
+  }
+
+  // Re-ordenar cards en el DOM
+  sorted.forEach(item => grid.appendChild(item.card));
+}
+
+// ─── Selección y panel lateral ───────────────────────────────
+
+function selectFile(idx) {
+  const item = state.files[idx];
+  if (!item) return;
+
+  // Deseleccionar anterior
+  if (state.selected !== null && state.files[state.selected]?.card) {
+    state.files[state.selected].card.classList.remove('selected');
+  }
+
+  state.selected = idx;
+  item.card.classList.add('selected');
+
+  openSidebar(item);
+}
+
+function openSidebar(item) {
+  sidebar.classList.remove('hidden');
+
+  // ── Preview ──
+  sidebarPreview.innerHTML = '';
+  if (item.cat === 'image') {
+    const img = document.createElement('img');
+    img.src = item.url;
+    img.alt = item.file.name;
+    sidebarPreview.appendChild(img);
+  } else {
+    const video = document.createElement('video');
+    video.src = item.url;
+    video.controls = true;
+    video.muted = true;
+    video.style.cssText = 'width:100%;height:100%;object-fit:contain';
+    sidebarPreview.appendChild(video);
+  }
+
+  // ── Metadatos ──
+  const ext        = item.file.name.split('.').pop().toUpperCase();
+  const fullPath   = item.path   || item.file.name;
+  const folderPath = item.folder || (currentLang === 'es' ? '(raíz)' : '(root)');
+
+  const meta = [
+    { label: t('metaName'),     value: item.file.name,  large: true },
+    { label: t('metaFolder'),   value: folderPath,       path: true  },
+    { label: t('metaPath'),     value: fullPath,         path: true  },
+    { label: t('metaMime'),     value: item.file.type || (currentLang === 'es' ? 'Desconocido' : 'Unknown') },
+    { label: t('metaFormat'),   value: ext },
+    { label: t('metaCategory'), value: item.cat === 'image' ? t('catImage') : t('catVideo') },
+    { label: t('metaSize'),     value: formatBytes(item.file.size) },
+    { label: t('metaModified'), value: formatDate(new Date(item.file.lastModified)) },
+  ];
+  if (item.hash) meta.push({ label: t('metaHash'), value: item.hash, mono: true });
+
+  sidebarMeta.innerHTML = '';
+
+  for (const { label, value, large, path: isPath, mono } of meta) {
+    const row = document.createElement('div');
+    row.className = 'meta-row';
+
+    const lbl = document.createElement('span');
+    lbl.className = 'meta-label';
+    lbl.textContent = label;
+    row.appendChild(lbl);
+
+    if (isPath) {
+      // ── Path row: text + folder/copy button ──
+      const pathRow = document.createElement('div');
+      pathRow.className = 'path-row';
+
+      const val = document.createElement('span');
+      val.className = 'meta-value path-value';
+      val.textContent = value;
+      val.title = value;
+      pathRow.appendChild(val);
+
+      const copyBtn = document.createElement('button');
+      copyBtn.className = 'btn-copy-path';
+      copyBtn.setAttribute('aria-label', t('copyPathLabel'));
+
+      // Folder icon (SVG)
+      copyBtn.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             width="13" height="13">
+          <path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0
+                   01-2-2V7z"/>
+        </svg>
+        <span class="copy-tooltip">${escapeHtml(value)}</span>`;
+
+      copyBtn.addEventListener('click', () => copyPathToClipboard(copyBtn, value));
+      pathRow.appendChild(copyBtn);
+      row.appendChild(pathRow);
+
+    } else {
+      const val = document.createElement('span');
+      val.className = 'meta-value' +
+        (large ? ' large-name' : '') +
+        (mono  ? ' mono-hash'  : '');
+      val.textContent = value;
+      val.title = value;
+      row.appendChild(val);
+    }
+
+    sidebarMeta.appendChild(row);
+  }
+}
+
+/**
+ * Copia texto al portapapeles y muestra feedback visual en el botón.
+ * Si la Clipboard API no está disponible, usa execCommand como fallback.
+ */
+function copyPathToClipboard(btn, text) {
+  const doFeedback = () => {
+    // Cambiar temporalmente a ícono de check verde
+    const original = btn.innerHTML;
+    btn.classList.add('copied');
+    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2.5" width="13" height="13">
+      <polyline points="20 6 9 17 4 12"/>
+    </svg>`;
+    showToast(t('pathCopied'));
+    setTimeout(() => {
+      btn.classList.remove('copied');
+      btn.innerHTML = original;
+    }, 1800);
+  };
+
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(text).then(doFeedback).catch(() => fallbackCopy(text, doFeedback));
+  } else {
+    fallbackCopy(text, doFeedback);
+  }
+}
+
+/** Fallback para navegadores sin Clipboard API */
+function fallbackCopy(text, callback) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0';
+  document.body.appendChild(ta);
+  ta.focus(); ta.select();
+  try { document.execCommand('copy'); callback(); } catch {}
+  document.body.removeChild(ta);
+}
+
+function closeSidebar() {
+  sidebar.classList.add('hidden');
+  if (state.selected !== null && state.files[state.selected]?.card) {
+    state.files[state.selected].card.classList.remove('selected');
+  }
+  state.selected = null;
+  sidebarPreview.innerHTML = `<div class="no-preview" data-i18n="noPreview">${t('noPreview')}</div>`;
+  sidebarMeta.innerHTML = '';
+}
+
+$('btnCloseSidebar').addEventListener('click', closeSidebar);
+
+/** Abre el visor desde el botón del sidebar */
+$('btnOpenViewer').addEventListener('click', () => {
+  if (state.selected !== null) openLightbox(state.selected);
+});
+
+// ─── Lightbox ────────────────────────────────────────────────
+
+function openLightbox(idx) {
+  state.lbIndex = idx;
+  lightbox.classList.add('open');
+  renderLightbox();
+}
+
+function renderLightbox() {
+  const item = state.files[state.lbIndex];
+  if (!item) return;
+
+  lbMediaWrap.innerHTML = '';
+  lbFilename.textContent = item.file.name;
+  lbCounter.textContent = `${state.lbIndex + 1} / ${state.files.length}`;
+
+  if (item.cat === 'image') {
+    const img = document.createElement('img');
+    img.src = item.url;
+    img.className = 'lb-media';
+    img.alt = item.file.name;
+    lbMediaWrap.appendChild(img);
+  } else {
+    const video = document.createElement('video');
+    video.src = item.url;
+    video.controls = true;
+    video.autoplay = true;
+    video.className = 'lb-media';
+    lbMediaWrap.appendChild(video);
+  }
+}
+
+function closeLightbox() {
+  lightbox.classList.remove('open');
+  lbMediaWrap.innerHTML = ''; // liberar recursos del video
+}
+
+$('lbClose').addEventListener('click', closeLightbox);
+
+$('lbPrev').addEventListener('click', () => {
+  state.lbIndex = (state.lbIndex - 1 + state.files.length) % state.files.length;
+  renderLightbox();
+});
+
+$('lbNext').addEventListener('click', () => {
+  state.lbIndex = (state.lbIndex + 1) % state.files.length;
+  renderLightbox();
+});
+
+// Navegación con teclado
+document.addEventListener('keydown', e => {
+  if (!lightbox.classList.contains('open')) return;
+  if (e.key === 'Escape') closeLightbox();
+  if (e.key === 'ArrowLeft') $('lbPrev').click();
+  if (e.key === 'ArrowRight') $('lbNext').click();
+});
+
+// Click fuera cierra el lightbox
+lightbox.addEventListener('click', e => {
+  if (e.target === lightbox) closeLightbox();
+});
+
+// También desde el grid al hacer doble clic
+grid.addEventListener('dblclick', e => {
+  const card = e.target.closest('.thumb-card');
+  if (card) openLightbox(parseInt(card.dataset.idx));
+});
+
+// ─── Detección de duplicados ──────────────────────────────────
+
+$('btnDuplicates').addEventListener('click', detectDuplicates);
+$('btnCloseDup').addEventListener('click', () => dupSection.classList.remove('visible'));
+$('btnExportJSON').addEventListener('click', () => exportDuplicates('json'));
+$('btnExportCSV').addEventListener('click',  () => exportDuplicates('csv'));
+$('btnExportTXT').addEventListener('click',  () => exportDuplicates('txt'));
+
+/**
+ * Calcula el hash SHA-256 de un archivo usando SubtleCrypto.
+ * Procesa el archivo en trozos de 4 MB para no saturar memoria.
+ */
+async function hashFile(file) {
+  const CHUNK = 4 * 1024 * 1024; // 4 MB
+  const buffers = [];
+
+  let offset = 0;
+  while (offset < file.size) {
+    const chunk = file.slice(offset, offset + CHUNK);
+    const buf = await chunk.arrayBuffer();
+    buffers.push(new Uint8Array(buf));
+    offset += CHUNK;
+  }
+
+  // Concatenar todos los chunks
+  const totalLen = buffers.reduce((a, b) => a + b.length, 0);
+  const combined = new Uint8Array(totalLen);
+  let pos = 0;
+  for (const b of buffers) { combined.set(b, pos); pos += b.length; }
+
+  const hashBuf = await crypto.subtle.digest('SHA-256', combined);
+  return Array.from(new Uint8Array(hashBuf))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+async function detectDuplicates() {
+  if (!state.files.length) return;
+
+  // 1. Resetear estado de duplicados
+  state.hashes.clear();
+  state.lastDupGroups = [];
+  dupSection.classList.remove('visible');
+  dupList.innerHTML = '';
+
+  // 2. Cancelar análisis anterior si existía, luego crear controlador nuevo
+  hashPauseCtrl.cancel();
+  hashPauseCtrl = new PauseController();
+  syncPauseBtn('btnPauseHash', 'iconPauseHash', 'hashPausedLabel', false);
+
+  hashProgressWrap.classList.add('visible');
+  hashProgressFill.style.width = '0%';
+  hashProgressLabel.textContent = t('progressHashing');
+
+  const total   = state.files.length;
+  const hashMap = new Map();
+  let processed = 0;
+
+  for (let i = 0; i < total; i++) {
+    // Esperar si está pausado
+    await hashPauseCtrl.checkPause();
+
+    // Salir si fue cancelado
+    if (hashPauseCtrl.cancelled) break;
+
+    const item = state.files[i];
+    try {
+      const hash = await hashFile(item.file);
+      item.hash = hash;
+      if (!hashMap.has(hash)) hashMap.set(hash, []);
+      hashMap.get(hash).push(i);
+    } catch (err) {
+      console.warn('Error hashing:', item.file.name, err);
+    }
+
+    processed = i + 1;
+    hashProgressFill.style.width = `${(processed / total) * 100}%`;
+    hashProgressLabel.textContent = t('analyzingOf', processed, total, item.file.name);
+
+    if (i % 5 === 0) await new Promise(r => setTimeout(r, 0));
+  }
+
+  hashProgressWrap.classList.remove('visible');
+  syncPauseBtn('btnPauseHash', 'iconPauseHash', 'hashPausedLabel', false);
+
+  // Si fue cancelado antes de terminar, avisar y mostrar resultados parciales
+  if (hashPauseCtrl.cancelled && processed < total) {
+    showToast(t('cancelledHash', processed, total));
+    // Aún podemos mostrar duplicados encontrados hasta ahora si los hay
+  }
+
+  const dupGroups = [...hashMap.entries()].filter(([, idxs]) => idxs.length > 1);
+  state.lastDupGroups = dupGroups;
+
+  if (state.selected !== null) {
+    const sel = state.files[state.selected];
+    if (sel?.hash) openSidebar(sel);
+  }
+
+  if (!dupGroups.length) {
+    showToast(t('noDuplicates'));
+    return;
+  }
+
+  const n = dupGroups.length;
+  dupBadge.textContent = n === 1 ? t('dupGroupN', n) : t('dupGroupsN', n);
+  dupList.innerHTML = '';
+
+  for (const [hash, idxs] of dupGroups) {
+    const group = document.createElement('div');
+    group.className = 'dup-group';
+
+    const header = document.createElement('div');
+    header.className = 'dup-group-header';
+    header.innerHTML = `
+      <span class="dup-count">${t('copiasN', idxs.length)}</span>
+      <span class="dup-hash" title="${hash}">SHA-256: ${hash.slice(0, 20)}…</span>
+      <span style="font-size:0.75rem;color:var(--text-muted)">${formatBytes(state.files[idxs[0]].file.size)} ${t('reportEach')}</span>
+    `;
+    group.appendChild(header);
+
+    const filesWrap = document.createElement('div');
+    filesWrap.className = 'dup-files';
+
+    for (const idx of idxs) {
+      const item = state.files[idx];
+      const el = document.createElement('div');
+      el.className = 'dup-file';
+      el.title = item.path || item.file.name;
+
+      if (item.thumb) {
+        const img = document.createElement('img');
+        img.src = item.thumb;
+        img.className = 'dup-file-thumb';
+        img.alt = item.file.name;
+        el.appendChild(img);
+      }
+
+      const nameEl = document.createElement('span');
+      nameEl.className = 'dup-file-name';
+      nameEl.textContent = item.file.name;
+      el.appendChild(nameEl);
+
+      const pathDisplay = item.folder && item.folder !== state.rootName
+        ? item.folder.replace(state.rootName + '/', '')
+        : '';
+      if (pathDisplay) {
+        const pathEl = document.createElement('span');
+        pathEl.className = 'dup-file-path';
+        pathEl.textContent = pathDisplay;
+        el.appendChild(pathEl);
+      }
+
+      el.addEventListener('click', () => selectFile(idx));
+      filesWrap.appendChild(el);
+    }
+
+    group.appendChild(filesWrap);
+    dupList.appendChild(group);
+  }
+
+  dupSection.classList.add('visible');
+  dupSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  const totalDups = dupGroups.reduce((a, [,idxs]) => a + idxs.length, 0);
+  showToast(t('dupFound', dupGroups.length, totalDups));
+}
+
+// ─── Exportación de duplicados ───────────────────────────────
+
+/**
+ * Exporta la lista de duplicados en el formato indicado: json | csv | txt
+ * Descarga el archivo directamente en el navegador.
+ */
+function exportDuplicates(format) {
+  const groups = state.lastDupGroups;
+  if (!groups.length) { showToast(t('noDupExport')); return; }
+
+  const locale  = currentLang === 'es' ? 'es-MX' : 'en-US';
+  const now     = new Date().toISOString().slice(0,19).replace(/[:T]/g, '-');
+  let content   = '';
+  let mimeType  = 'text/plain';
+  let filename  = `photovault-duplicates-${now}`;
+
+  if (format === 'json') {
+    // ── JSON: structured export with full metadata ──
+    const data = groups.map(([hash, idxs]) => ({
+      hash_sha256: hash,
+      copies:      idxs.length,
+      size_bytes:  state.files[idxs[0]].file.size,
+      size:        formatBytes(state.files[idxs[0]].file.size),
+      files: idxs.map(i => ({
+        name:         state.files[i].file.name,
+        relative_path:state.files[i].path || state.files[i].file.name,
+        folder:       state.files[i].folder || '',
+        mime_type:    state.files[i].file.type,
+        size_bytes:   state.files[i].file.size,
+        modified:     new Date(state.files[i].file.lastModified).toISOString(),
+      }))
+    }));
+    content  = JSON.stringify({ exported: new Date().toISOString(), groups: data }, null, 2);
+    mimeType = 'application/json';
+    filename += '.json';
+
+  } else if (format === 'csv') {
+    // ── CSV: one row per duplicate file ──
+    const rows = [
+      ['group', 'hash_sha256', 'name', 'relative_path', 'folder', 'mime_type', 'size_bytes', 'size', 'modified']
+    ];
+    groups.forEach(([hash, idxs], gi) => {
+      idxs.forEach(i => {
+        const f = state.files[i];
+        rows.push([
+          gi + 1,
+          hash,
+          f.file.name,
+          f.path || f.file.name,
+          f.folder || '',
+          f.file.type,
+          f.file.size,
+          formatBytes(f.file.size),
+          new Date(f.file.lastModified).toISOString(),
+        ]);
+      });
+    });
+    content  = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+    mimeType = 'text/csv;charset=utf-8;';
+    filename += '.csv';
+
+  } else {
+    // ── TXT: human-readable report ──
+    const lines = [
+      t('reportTitle'),
+      `${t('reportGenerated')} ${new Date().toLocaleString(locale)}`,
+      `${t('reportRoot')} ${state.rootName || '?'}`,
+      `${t('reportGroups')} ${groups.length}`,
+      '═'.repeat(60),
+      '',
+    ];
+    groups.forEach(([hash, idxs], gi) => {
+      lines.push(`${t('reportGroup')} ${gi + 1}  (${idxs.length} ${t('reportCopies')} · ${formatBytes(state.files[idxs[0]].file.size)} ${t('reportEach')})`);
+      lines.push(`SHA-256: ${hash}`);
+      idxs.forEach(i => {
+        const f = state.files[i];
+        lines.push(`  • ${f.path || f.file.name}`);
+        lines.push(`    ${t('reportModified')} ${new Date(f.file.lastModified).toLocaleString(locale)}`);
+      });
+      lines.push('─'.repeat(60));
+      lines.push('');
+    });
+    content  = lines.join('\n');
+    filename += '.txt';
+  }
+
+  const blob = new Blob([content], { type: mimeType });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+
+  showToast(t('exportedAs', filename));
+}
+
+// ─── Utilidad de escape HTML ──────────────────────────────────
+function escapeHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ============================================================
+   PERSISTENCIA DE SESIÓN — IndexedDB
+   ============================================================
+   Guarda el FileSystemDirectoryHandle en IndexedDB para poder
+   recuperarlo al recargar la página.
+
+   Limitaciones de seguridad del navegador:
+   • Solo funciona con File System Access API (Chrome / Edge).
+   • Al recargar, el navegador SIEMPRE requiere que el usuario
+     confirme el acceso con un gesto explícito (clic).
+     No es posible restaurar el acceso silenciosamente.
+   • En Firefox / Safari con fallback webkitdirectory,
+     esta función no aplica.
+   ============================================================ */
+
+const DB_NAME    = 'photovault';
+const DB_VERSION = 1;
+const STORE_NAME = 'session';
+const KEY_HANDLE = 'lastDirHandle';
+
+/** Abre (o crea) la base de datos IndexedDB */
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = e => {
+      e.target.result.createObjectStore(STORE_NAME);
+    };
+    req.onsuccess = e => resolve(e.target.result);
+    req.onerror   = e => reject(e.target.error);
+  });
+}
+
+/** Guarda el DirectoryHandle en IndexedDB */
+async function saveHandleToDB(handle) {
+  try {
+    const db = await openDB();
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    tx.objectStore(STORE_NAME).put(handle, KEY_HANDLE);
+    await new Promise((res, rej) => { tx.oncomplete = res; tx.onerror = rej; });
+    db.close();
+  } catch (e) {
+    console.warn('No se pudo guardar el handle en IndexedDB:', e);
+  }
+}
+
+/** Recupera el DirectoryHandle guardado (puede ser null) */
+async function loadHandleFromDB() {
+  try {
+    const db = await openDB();
+    const handle = await new Promise((res, rej) => {
+      const tx  = db.transaction(STORE_NAME, 'readonly');
+      const req = tx.objectStore(STORE_NAME).get(KEY_HANDLE);
+      req.onsuccess = () => res(req.result ?? null);
+      req.onerror   = () => rej(req.error);
+    });
+    db.close();
+    return handle;
+  } catch (e) {
+    console.warn('No se pudo leer el handle de IndexedDB:', e);
+    return null;
+  }
+}
+
+/** Elimina el handle guardado (al seleccionar carpeta nueva o descartar) */
+async function clearHandleFromDB() {
+  try {
+    const db = await openDB();
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    tx.objectStore(STORE_NAME).delete(KEY_HANDLE);
+    await new Promise((res, rej) => { tx.oncomplete = res; tx.onerror = rej; });
+    db.close();
+  } catch (e) { /* silencioso */ }
+}
+
+// ─── Banner de restauración ───────────────────────────────────
+
+const restoreBanner     = $('restoreBanner');
+const restoreFolderName = $('restoreFolderName');
+
+/** Muestra el banner con el nombre de la carpeta guardada */
+function showRestoreBanner(handle) {
+  restoreFolderName.textContent = handle.name;
+  restoreBanner.classList.add('visible');
+}
+
+function hideRestoreBanner() {
+  restoreBanner.classList.remove('visible');
+}
+
+$('btnDismissRestore').addEventListener('click', async () => {
+  hideRestoreBanner();
+  await clearHandleFromDB();
+});
+
+$('btnRestore').addEventListener('click', async () => {
+  hideRestoreBanner();
+  const handle = await loadHandleFromDB();
+  if (handle) restoreFromHandle(handle);
+});
+
+/**
+ * Restaura la galería desde un FileSystemDirectoryHandle guardado.
+ * Verifica y solicita permisos (obligatorio en cada sesión nueva).
+ */
+async function restoreFromHandle(dirHandle) {
+  try {
+    // Verificar si ya tenemos permiso (puede haberse concedido en esta sesión)
+    let permission = await dirHandle.queryPermission({ mode: 'read' });
+
+    if (permission !== 'granted') {
+      // Pedir permiso — REQUIERE gesto del usuario (el clic en "Restaurar")
+      permission = await dirHandle.requestPermission({ mode: 'read' });
+    }
+
+    if (permission !== 'granted') {
+      showToast(t('permDenied'));
+      await clearHandleFromDB();
+      return;
+    }
+
+    // Permiso concedido — cargar la carpeta
+    state.rootName = dirHandle.name;
+    const entries = [];
+    await collectFilesFromDir(dirHandle, entries, dirHandle.name);
+    processFiles(entries);
+
+  } catch (err) {
+    console.error('Error al restaurar:', err);
+    showToast(t('restoreFailed'));
+    await clearHandleFromDB();
+  }
+}
+
+// ─── Modificar openWithDirectoryPicker para guardar el handle ─
+
+/** Usa File System Access API y guarda el handle para restauración */
+async function openWithDirectoryPicker() {
+  try {
+    const dirHandle = await window.showDirectoryPicker();
+    state.rootName = dirHandle.name;
+    await saveHandleToDB(dirHandle);
+    hideRestoreBanner();
+    const entries = [];
+    await collectFilesFromDir(dirHandle, entries, dirHandle.name);
+    processFiles(entries);
+  } catch (err) {
+    if (err.name === 'AbortError') return; // usuario canceló — silencioso
+    if (err.name === 'SecurityError') {
+      // Contexto no permitido (iframe cross-origin): usar fallback
+      console.warn('showDirectoryPicker bloqueado por SecurityError — usando fallback');
+      $('fileInputFallback').click();
+      return;
+    }
+    showToast('Error: ' + err.message);
+    console.error(err);
+  }
+}
+
+// ─── Init: detectar handle guardado al cargar la página ───────
+
+async function init() {
+  console.info('%cPhotoVault v1.3 — Galería local sin servidor', 'color:#d4a853;font-weight:bold;font-size:14px');
+  // v1.3: i18n completo ES/EN — idioma persiste en localStorage
+
+  // Aplicar idioma guardado (o español por defecto) al arranque
+  applyTranslations();
+
+  // Solo intentar restaurar si podemos usar File System Access API de forma segura
+  if (!canUseDirectoryPicker) {
+    console.info('File System Access API no disponible o bloqueada (iframe) — usando fallback');
+    return;
+  }
+
+  const savedHandle = await loadHandleFromDB();
+  if (!savedHandle) return;
+
+  try {
+    const permission = await savedHandle.queryPermission({ mode: 'read' });
+    if (permission === 'granted') {
+      state.rootName = savedHandle.name;
+      const entries = [];
+      await collectFilesFromDir(savedHandle, entries, savedHandle.name);
+      processFiles(entries);
+    } else {
+      showRestoreBanner(savedHandle);
+    }
+  } catch (e) {
+    console.warn('Saved handle is no longer valid:', e);
+    await clearHandleFromDB();
+  }
+}
+
+init();
+</script>
+</body>
+</html>
